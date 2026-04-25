@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ประวัติบุคคลสังเขป</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<style>
+/* ─── Font ─── */
+@font-face { font-family:'TH SarabunIT9'; src:local('TH SarabunIT9'),local('TH SarabanIT9'); }
+@font-face { font-family:'TH SarabunIT9'; src:local('TH SarabunIT9 Bold'),local('TH SarabanIT9 Bold'); font-weight:bold; }
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+body{ font-family:'TH SarabunIT9','TH Sarabun New','Sarabun',serif; font-size:15px; background:#1a2035; color:#e4ecf7; min-height:100vh; }
+
+/* ─── App shell ─── */
+#app{ display:flex; flex-direction:column; min-height:100vh; max-width:600px; margin:0 auto; }
+
+/* ─── Header ─── */
+#header{
+  background:linear-gradient(135deg,#0d3b8c,#1565c0);
+  padding:12px 16px; display:flex; align-items:center; gap:10px;
+  position:sticky; top:0; z-index:100; box-shadow:0 2px 12px rgba(0,0,0,.5);
+}
+#header-photo{
+  width:44px; height:44px; border-radius:22px; border:2px solid rgba(255,255,255,.35);
+  background:rgba(255,255,255,.12); display:flex; align-items:center; justify-content:center;
+  overflow:hidden; flex-shrink:0; cursor:pointer; position:relative;
+}
+#header-photo img{ width:100%; height:100%; object-fit:cover; border-radius:20px; display:none; }
+#header-photo .dot{
+  position:absolute; bottom:-2px; right:-2px; background:#ffd54f; color:#000;
+  font-size:9px; font-weight:800; width:16px; height:16px; border-radius:8px;
+  display:flex; align-items:center; justify-content:center; border:1.5px solid #0d3b8c;
+}
+#header-info{ flex:1; min-width:0; }
+#header-name{ font-size:14px; font-weight:800; color:#fff; }
+#header-unit{ font-size:11px; color:rgba(255,255,255,.65); }
+#header-btns{ display:flex; gap:6px; }
+
+/* ─── Tabs ─── */
+#tabs{
+  display:flex; overflow-x:auto; background:#0f1824;
+  border-bottom:2px solid #1a3352; flex-shrink:0; scrollbar-width:none;
+}
+.tab{
+  flex:0 0 auto; display:flex; flex-direction:column; align-items:center;
+  padding:9px 11px 7px; background:transparent; border:none; color:#7a96b5;
+  cursor:pointer; font-family:inherit; gap:2px; border-bottom:3px solid transparent;
+}
+.tab.active{ color:#42a5f5; border-bottom:3px solid #1565c0; background:rgba(21,101,192,.1); }
+.tab .ti{ font-size:18px; }
+.tab .tl{ font-size:10px; }
+
+/* ─── Content ─── */
+#content{ flex:1; overflow-y:auto; padding:14px; padding-bottom:110px; }
+
+/* ─── Section cards ─── */
+.sec{ background:#141f30; border-radius:14px; border:1px solid #1a3352; margin-bottom:14px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,.3); }
+.sec-head{ display:flex; align-items:center; gap:8px; padding:12px 16px; background:linear-gradient(90deg,rgba(21,101,192,.25),transparent); border-bottom:1px solid #1a3352; }
+.sec-title{ font-weight:700; font-size:14px; color:#42a5f5; }
+.sec-body{ padding:12px 16px 16px; }
+.field{ margin-bottom:14px; }
+.field label{ display:block; font-size:11px; color:#7a96b5; font-weight:600; margin-bottom:5px; }
+.field input, .field select{
+  width:100%; padding:10px 12px; background:#0b1421; border:1px solid #1a3352;
+  border-radius:8px; color:#e4ecf7; font-size:14px; font-family:inherit; outline:none;
+}
+.field select{ appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%237a96b5' d='M6 8L0 0h12z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:32px; }
+.row{ display:flex; gap:10px; }
+.row .field{ flex:1; min-width:0; }
+.sub{ font-size:12px; font-weight:700; color:#ffd54f; margin-bottom:10px; }
+.divider{ height:1px; background:#1a3352; margin:14px 0; }
+.badge{ display:inline-block; background:rgba(255,213,79,.15); border:1px solid rgba(255,213,79,.4); color:#ffd54f; font-size:10px; padding:1px 6px; border-radius:4px; margin-left:4px; }
+
+/* ─── Photo uploader ─── */
+.photo-wrap{ display:flex; flex-direction:column; align-items:center; margin-bottom:20px; gap:8px; }
+.photo-box{
+  width:110px; height:140px; border-radius:14px; background:#0b1421;
+  border:2px dashed #1a3352; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; cursor:pointer; overflow:hidden; position:relative;
+}
+.photo-box img{ width:100%; height:100%; object-fit:cover; }
+.photo-box .ph{ display:flex; flex-direction:column; align-items:center; gap:4px; }
+.photo-box .ph span:first-child{ font-size:32px; }
+.photo-box .ph span:last-child{ font-size:11px; color:#7a96b5; }
+.photo-edit{ position:absolute; bottom:6px; right:6px; background:#1565c0; border-radius:10px; width:22px; height:22px; display:flex; align-items:center; justify-content:center; font-size:11px; }
+.btn-rm-photo{ background:rgba(239,83,80,.15); border:1px solid rgba(239,83,80,.4); color:#ef5350; font-size:12px; padding:5px 12px; border-radius:8px; cursor:pointer; font-family:inherit; }
+
+/* ─── Date field ─── */
+.date-row{ display:flex; gap:6px; }
+.date-row select, .date-row input{ padding:10px 6px!important; font-size:13px!important; }
+.date-d{ flex:0 0 64px; text-align:center; }
+.date-m{ flex:1; }
+.date-y{ flex:0 0 78px; text-align:center; }
+.date-badge{ color:#ffd54f; font-size:10px; margin-left:4px; }
+
+/* ─── Buttons ─── */
+.btn{ padding:8px 14px; border-radius:8px; cursor:pointer; font-family:inherit; font-weight:700; border:none; font-size:12px; }
+.btn-import{ background:rgba(102,187,106,.2); border:1px solid rgba(102,187,106,.5)!important; color:#66bb6a; }
+.btn-add{ background:rgba(255,213,79,.2); border:1px solid rgba(255,213,79,.5)!important; color:#ffd54f; }
+.btn-menu{ background:rgba(255,255,255,.12); color:#fff; width:34px; height:34px; display:flex; align-items:center; justify-content:center; font-size:20px; }
+
+/* ─── Footer ─── */
+#footer{
+  position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+  width:100%; max-width:600px; background:#0f1824;
+  padding:10px 16px 16px; border-top:1px solid #1a3352;
+  box-shadow:0 -4px 20px rgba(0,0,0,.5); display:flex; gap:8px;
+}
+#btn-print{ background:rgba(255,213,79,.15); border:1px solid rgba(255,213,79,.4)!important; color:#ffd54f; padding:14px 16px; border-radius:12px; cursor:pointer; font-size:15px; font-weight:700; font-family:inherit; flex:0 0 auto; white-space:nowrap; }
+#btn-save{ flex:1; padding:14px; background:linear-gradient(135deg,#1565c0,#1976d2); border:none; border-radius:12px; color:#fff; font-size:15px; font-weight:700; font-family:inherit; cursor:pointer; box-shadow:0 4px 14px rgba(21,101,192,.4); }
+#btn-save.ok{ background:linear-gradient(135deg,#2e7d32,#43a047); }
+
+/* ─── Member list sidebar ─── */
+#member-list{ display:none; flex-direction:column; flex:1; }
+#member-list.show{ display:flex; }
+.mcard{ display:flex; align-items:center; gap:12px; background:#141f30; border-radius:12px; padding:12px; margin-bottom:10px; border:1px solid #1a3352; cursor:pointer; }
+.mcard.active{ border-color:#1565c0; background:rgba(21,101,192,.12); }
+.mcard-photo{ width:50px; height:50px; border-radius:12px; background:#0b1421; border:1px solid #1a3352; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; font-size:22px; }
+.mcard-photo img{ width:100%; height:100%; object-fit:cover; }
+.mcard-name{ font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mcard-sub{ font-size:11px; color:#7a96b5; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mcard-id{ font-size:10px; color:#42a5f5; opacity:.8; }
+.btn-del{ background:rgba(239,83,80,.12); border:1px solid rgba(239,83,80,.3)!important; color:#ef5350; border-radius:8px; padding:6px 8px; cursor:pointer; font-size:14px; flex-shrink:0; }
+
+/* ─── Import modal ─── */
+#import-modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:500; align-items:flex-end; justify-content:center; }
+#import-modal.show{ display:flex; }
+.modal-box{ background:#0f1824; border-radius:20px 20px 0 0; width:100%; max-width:600px; border:1px solid #1a3352; box-shadow:0 -8px 40px rgba(0,0,0,.6); max-height:90vh; display:flex; flex-direction:column; }
+.modal-head{ display:flex; align-items:center; gap:10px; padding:16px 16px 12px; border-bottom:1px solid #1a3352; }
+.modal-title{ flex:1; font-weight:800; font-size:15px; }
+.modal-close{ background:rgba(255,255,255,.1); border:none; color:#7a96b5; font-size:16px; width:30px; height:30px; border-radius:8px; cursor:pointer; }
+.modal-body{ padding:16px; overflow-y:auto; }
+.drop-zone{
+  border:2px dashed #1a3352; border-radius:14px; padding:28px 16px;
+  text-align:center; cursor:pointer; background:rgba(21,101,192,.04);
+}
+.drop-zone.drag{ border-color:#42a5f5; background:rgba(21,101,192,.12); }
+.import-note{ text-align:center; font-size:11px; color:#7a96b5; margin-top:14px; padding:10px; background:rgba(255,213,79,.07); border-radius:8px; border:1px solid rgba(255,213,79,.2); line-height:1.5; }
+.spinner{ width:44px; height:44px; border:4px solid #1a3352; border-top:4px solid #42a5f5; border-radius:50%; animation:spin .8s linear infinite; margin:0 auto; }
+@keyframes spin{ to{ transform:rotate(360deg); } }
+.preview-card{ background:#141f30; border-radius:12px; border:1px solid #1a3352; overflow:hidden; margin-bottom:12px; }
+.preview-row{ display:flex; padding:8px 14px; border-bottom:1px solid #1a3352; }
+.preview-row:last-child{ border-bottom:none; }
+.preview-label{ font-size:11px; color:#7a96b5; width:130px; flex-shrink:0; }
+.preview-val{ font-size:12px; font-weight:700; flex:1; word-break:break-all; }
+.btn-confirm{ flex:2; padding:12px; background:linear-gradient(135deg,#2e7d32,#43a047); border:none; border-radius:10px; color:#fff; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+.btn-cancel{ flex:1; padding:12px; background:#141f30; border:1px solid #1a3352!important; border-radius:10px; color:#7a96b5; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+
+/* ─── Dropdown ─── */
+.dropdown{ position:absolute; top:42px; right:0; background:#141f30; border-radius:12px; overflow:hidden; box-shadow:0 8px 32px rgba(0,0,0,.7); border:1px solid #1a3352; z-index:300; min-width:210px; }
+.dd-item{ display:block; width:100%; padding:12px 16px; background:transparent; border:none; color:#e4ecf7; text-align:left; cursor:pointer; font-size:13px; font-family:inherit; }
+.dd-item.red{ color:#ef5350; }
+
+/* ─── PRINT ─── */
+@media print{
+  @page{ size:A4 portrait; margin:10mm; }
+  body{ background:#fff!important; }
+  #app, #header, #tabs, #footer, #import-modal, .dropdown{ display:none!important; }
+  #print-area{ display:block!important; font-family:'TH SarabunIT9','TH Sarabun New','Sarabun',serif!important; }
+  *{ font-family:'TH SarabunIT9','TH Sarabun New','Sarabun',serif!important; }
+  .print-page{ page-break-after:always; padding:0; }
+  .print-page:last-child{ page-break-after:auto; }
+}
+#print-area{ display:none; font-family:'TH SarabunIT9','TH Sarabun New','Sarabun',serif; }
+
+/* ─── Print form tables ─── */
+.pf{ font-family:'TH SarabunIT9','TH Sarabun New','Sarabun',serif; font-size:12pt; color:#000; background:#fff; }
+.pf table{ width:100%; border-collapse:collapse; margin-bottom:3px; }
+.pf td,.pf th{ border:1px solid #000; padding:2px 5px; font-family:'TH SarabunIT9','TH Sarabun New','Sarabun',serif; font-size:11pt; vertical-align:middle; line-height:1.35; }
+.pf th{ font-weight:bold; background:#e8e8e8; text-align:center; }
+.pf .lb{ font-weight:bold; background:#ececec; white-space:nowrap; }
+.pf .vl{ font-weight:bold; }
+.pf .ct{ text-align:center; }
+.pf .pt{ text-align:center; font-size:16pt; font-weight:bold; margin-bottom:5px; }
+.pf .pt2{ text-align:center; font-size:14pt; font-weight:bold; margin-bottom:6px; }
+.pf .ph-cell{ width:85px; height:108px; text-align:center; vertical-align:middle; }
+.pf .ph-cell img{ width:79px; height:100px; object-fit:cover; }
+.pf .ph-cell .noph{ width:79px; height:100px; display:flex; align-items:center; justify-content:center; font-size:9pt; color:#999; border:1px dashed #ccc; flex-direction:column; gap:4px; margin:0 auto; }
+.pf .p2wrap{ display:flex; gap:8px; margin-bottom:8px; }
+.pf .p2l,.pf .p2r{ flex:1; min-width:0; }
+.pf .p2c{ flex:0 0 88px; text-align:center; }
+.pf .p2ph{ width:82px; height:105px; border:1px solid #000; display:flex; align-items:center; justify-content:center; margin:0 auto 4px; overflow:hidden; }
+.pf .p2ph img{ width:80px; height:103px; object-fit:cover; }
+.pf .sec-h{ font-weight:bold; font-size:11pt; border-bottom:1px solid #000; margin-bottom:4px; text-decoration:underline; text-align:center; }
+.pf .sig-line{ border-bottom:1px solid #000; margin-top:28px; margin-bottom:3px; }
+</style>
+</head>
+<body>
+
+<!-- ══ MAIN APP ══ -->
+<div id="app">
+
+  <!-- Header -->
+  <div id="header">
+    <div id="header-photo" onclick="toggleList()">
+      <span id="hdr-icon" style="font-size:18px">👤</span>
+      <img id="hdr-img" src="" alt="">
+      <div class="dot" id="hdr-count">1</div>
+    </div>
+    <div id="header-info">
+      <div id="header-name">ยังไม่มีข้อมูล</div>
+      <div id="header-unit">กดเพื่อเพิ่มสมาชิก</div>
+    </div>
+    <div id="header-btns" style="position:relative">
+      <button class="btn btn-import" onclick="showImport()">📂 นำเข้า</button>
+      <button class="btn btn-add" onclick="addBlankMember()">+ เพิ่ม</button>
+      <button class="btn btn-menu" onclick="toggleMenu()" id="menu-btn">⋮</button>
+      <div class="dropdown" id="dropdown" style="display:none">
+        <button class="dd-item" onclick="toggleList();closeMenu()">👥 รายชื่อทั้งหมด</button>
+        <button class="dd-item" onclick="showImport();closeMenu()">📂 นำเข้าจากไฟล์</button>
+        <button class="dd-item" onclick="addBlankMember();closeMenu()">➕ เพิ่มสมาชิกใหม่</button>
+        <div style="height:1px;background:#1a3352;margin:4px 0"></div>
+        <button class="dd-item red" onclick="deleteCurrent();closeMenu()">🗑️ ลบสมาชิกนี้</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase status bar -->
+  <div id="fb-bar" style="background:#0a1628;border-bottom:1px solid #1a3352;padding:6px 16px;display:flex;align-items:center;justify-content:space-between;font-size:11px;flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:6px">
+      <div id="fb-dot" style="width:8px;height:8px;border-radius:4px;background:#555;flex-shrink:0"></div>
+      <span id="fb-status" style="color:#7a96b5">กำลังเชื่อมต่อ Firebase...</span>
+    </div>
+    <button onclick="fbSync()" style="background:rgba(66,165,245,.15);border:1px solid rgba(66,165,245,.4);color:#42a5f5;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:inherit">☁️ Sync</button>
+  </div>
+
+  <!-- Member List -->
+  <div id="member-list-view" style="display:none;flex-direction:column;flex:1;padding:16px;overflow-y:auto;padding-bottom:80px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div id="ml-count" style="font-size:12px;color:#7a96b5;font-weight:600"></div>
+      <button onclick="closeList()" style="background:rgba(255,255,255,.1);border:none;color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-family:inherit">✕ ปิด</button>
+    </div>
+    <div id="member-cards"></div>
+  </div>
+
+  <!-- Tabs + Form -->
+  <div id="form-view" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+    <div id="tabs">
+      <button class="tab active" data-tab="personal" onclick="switchTab(this)"><span class="ti">👤</span><span class="tl">ส่วนตัว</span></button>
+      <button class="tab" data-tab="service" onclick="switchTab(this)"><span class="ti">🎖️</span><span class="tl">ราชการ</span></button>
+      <button class="tab" data-tab="education" onclick="switchTab(this)"><span class="ti">📚</span><span class="tl">การศึกษา</span></button>
+      <button class="tab" data-tab="family" onclick="switchTab(this)"><span class="ti">👨‍👩‍👧</span><span class="tl">ครอบครัว</span></button>
+      <button class="tab" data-tab="health" onclick="switchTab(this)"><span class="ti">🏥</span><span class="tl">สุขภาพ</span></button>
+      <button class="tab" data-tab="finance" onclick="switchTab(this)"><span class="ti">💰</span><span class="tl">การเงิน</span></button>
+      <button class="tab" data-tab="commanders" onclick="switchTab(this)"><span class="ti">⭐</span><span class="tl">ผบ.ชา</span></button>
+    </div>
+    <div id="content"></div>
+    <div id="footer">
+      <button id="btn-print" onclick="doPrint()">🖨️ พิมพ์</button>
+      <button id="btn-save" onclick="saveData()">💾 บันทึกข้อมูล</button>
+    </div>
+  </div>
+
+</div><!-- end #app -->
+
+<!-- ══ IMPORT MODAL ══ -->
+<div id="import-modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span style="font-size:20px">📂</span>
+      <span class="modal-title">นำเข้าข้อมูลจากไฟล์</span>
+      <button class="modal-close" onclick="closeImport()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+        ondragover="event.preventDefault();this.classList.add('drag')"
+        ondragleave="this.classList.remove('drag')"
+        ondrop="handleFileDrop(event)">
+        <div style="font-size:40px;margin-bottom:8px">📄</div>
+        <div style="font-size:14px;font-weight:700;margin-bottom:6px">แตะหรือลากไฟล์มาวางที่นี่</div>
+        <div style="font-size:12px;color:#7a96b5;line-height:1.7">
+          📝 Word (.docx, .doc)<br>
+          📊 Excel (.xlsx, .xls, .csv)<br>
+          📕 PDF (.pdf)
+        </div>
+      </div>
+      <input type="file" id="file-input" accept=".docx,.doc,.xlsx,.xls,.csv,.pdf,.txt" style="display:none" onchange="handleFileInput(event)">
+      <div class="import-note">🤖 AI จะวิเคราะห์เนื้อหาไฟล์และกรอกข้อมูลให้อัตโนมัติ</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PRINT AREA ══ -->
+<div id="print-area"></div>
+
+<script>
+// ══ State ══
+const RANKS = ['พลฯ','ส.ต.','ส.ท.','ส.อ.','จ.ส.ต.','จ.ส.ท.','จ.ส.อ.','จ.ส.อ.(พ)','ร.ต.','ร.ท.','ร.อ.','พ.ต.','พ.ท.','พ.อ.'];
+const BLOODS = ['A','B','AB','O'];
+const BRANCHES = ['ราบ','ม้า','ทหารปืนใหญ่','ช่าง','สื่อสาร','พลาธิการ','แพทย์','อื่น ๆ'];
+const EDUS = ['ประถมศึกษา','มัธยมศึกษา','ประกาศนียบัตรวิชาชีพ (ปวช.)','ประกาศนียบัตรวิชาชีพขั้นสูง (ปวส.)','ปริญญาตรี','ปริญญาโท','ปริญญาเอก'];
+const MONTHS_TH = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const MONTHS_ABB = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+const TD = ['๐','๑','๒','๓','๔','๕','๖','๗','๘','๙'];
+
+let members = [], activeId = 1, idCounter = 2;
+let currentTab = 'personal';
+
+function blank(id){ return { id, photo:null, rank:'ส.ต.', firstName:'', lastName:'', idNumber:'', nationalId:'', position:'', unit:'', branch:'ราบ', salaryGrade:'', salary:'', bonusSalary:'', enlistDate:'', birthDate:'', age:'', height:'', weight:'', bloodType:'A', birthAddress:'', phone:'', email:'', currentAddress:'', scar:'', education:'ประกาศนียบัตรวิชาชีพขั้นสูง (ปวส.)', militaryCourse1:'', militaryCourse2:'', militaryCourse3:'', maritalStatus:'โสด', fatherName:'', fatherOccupation:'', fatherAddress:'', motherName:'', motherOccupation:'', motherAddress:'', wifeName:'', wifeOccupation:'', wifeAddress:'', childrenCount:'', healthStatus:'ไม่มีโรคประจำตัว', healthNote:'', specialSkill1:'', specialSkill2:'', hasDebt:'ไม่มี', debtAmount:'', debtPayment:'', debtSource:'', commander1Name:'', commander1Position:'', commander1Phone:'', commander2Name:'', commander2Position:'', commander2Phone:'', commander3Name:'', commander3Position:'', commander3Phone:'', commander4Name:'', commander4Position:'', commander4Phone:'' }; }
+
+const SAMPLE = { ...blank(1), rank:'ส.ต.', firstName:'พีรชัย', lastName:'สิริวิบูลย์กิตติ', idNumber:'1601200515', nationalId:'1579900687071', position:'พลขับรถ บก.มว.ตถ.ร้อย.สสก.', unit:'ร.21 พัน.1 รอ.', branch:'ราบ', salaryGrade:'ป.1 ชั้น 18.5', salary:'10,540', enlistDate:'24/9/2568', birthDate:'6/10/2539', age:'29', height:'181', weight:'85', bloodType:'A', birthAddress:'246 ม.16 ต.สันกลาง อ.พาน จ.เชียงราย', phone:'0980935539', currentAddress:'303 ม.9 ต.บ้านสวน อ.เมือง จ.ชลบุรี', scar:'นิ้วชี้ข้างซ้าย', education:'ประกาศนียบัตรวิชาชีพขั้นสูง (ปวส.)', militaryCourse1:'อาสาสมัครทหารพรานเบื้องต้น รุ่น 2/64', maritalStatus:'โสด', fatherName:'นาย กฤติชาติ สิริวิบูลย์กิตติ', fatherOccupation:'ค้าขาย', fatherAddress:'401/25 ต.ท่าทราย อ.เมือง จ.นนทบุรี', motherName:'นาง มยุรี เตียวตระกูล', motherOccupation:'ค้าขาย', motherAddress:'246 ม.16 ต.สันกลาง อ.พาน จ.เชียงราย', healthStatus:'ไม่มีโรคประจำตัว', specialSkill1:'เล่นกีฬา', hasDebt:'ไม่มี', commander1Name:'พล.ต.เบญจพล เดชาติวงศ์ ณ อยุธยา', commander1Position:'ผบ.พล ร.2 รอ.', commander2Name:'พ.อ.ณัฐวุฒิ สมพรม', commander2Position:'ผบ.ร.21 รอ.', commander3Name:'พ.ท.ธีระชัย กำจร', commander3Position:'ผบ. ร.21 พัน.1 รอ.', commander4Name:'ร.อ.อนันต์ เหล่าสูง', commander4Position:'ทกท.ผบ.ร้อย.สสก. ร.21 พัน.1 รอ.' };
+
+// ══ Firebase Config ══
+const FB_CONFIG = {
+  apiKey: "AIzaSyC0-Pke8Oq5DL3bH87KJ68_ns_wqso1Pas",
+  authDomain: "resume-1bdb7.firebaseapp.com",
+  databaseURL: "https://resume-1bdb7-default-rtdb.firebaseio.com",  // ← ตรงนี้ต้องกรอก URL จาก Firebase console
+  projectId: "resume-1bdb7",
+  storageBucket: "resume-1bdb7.firebasestorage.app",
+  messagingSenderId: "506650480232",
+  appId: "1:506650480232:web:1355eec22cdbfeb5a6f5dd",
+  measurementId: "G-207CJDQWD6"
+};
+
+let fbApp = null, fbDb = null, fbRef = null;
+const FB_PATH = 'military_records'; // path ใน database
+
+function fbInit(){
+  try {
+    fbApp = firebase.initializeApp(FB_CONFIG);
+    fbDb  = firebase.database();
+    fbRef = fbDb.ref(FB_PATH);
+    fbSetStatus('connecting');
+
+    // ── Realtime listener — sync ทุกครั้งที่ข้อมูลเปลี่ยนบน Firebase ──
+    fbRef.on('value', snap => {
+      const data = snap.val();
+      if (data && data.members && data.members.length > 0) {
+        members    = data.members;
+        activeId   = data.activeId   || members[0].id;
+        idCounter  = data.idCounter  || (Math.max(...members.map(m=>m.id)) + 1);
+        updateHeader();
+        renderForm();
+        renderMemberCards();
+        fbSetStatus('connected');
+      } else {
+        // Firebase ว่างเปล่า — ใส่ SAMPLE แล้ว push ขึ้น
+        members = [SAMPLE]; activeId = 1; idCounter = 2;
+        fbPush();
+        fbSetStatus('connected');
+      }
+    }, err => {
+      fbSetStatus('error', err.message);
+      // fallback localStorage
+      loadLocal();
+    });
+
+    // ── Connection state ──
+    fbDb.ref('.info/connected').on('value', snap => {
+      if (snap.val()) fbSetStatus('connected');
+      else fbSetStatus('offline');
+    });
+
+  } catch(e) {
+    fbSetStatus('error', e.message);
+    loadLocal();
+  }
+}
+
+function fbSetStatus(state, msg){
+  const dot = document.getElementById('fb-dot');
+  const txt = document.getElementById('fb-status');
+  if (!dot || !txt) return;
+  const MAP = {
+    connecting : ['#f5b400', 'กำลังเชื่อมต่อ Firebase...'],
+    connected  : ['#66bb6a', '☁️ Firebase เชื่อมต่อแล้ว — sync realtime'],
+    offline    : ['#f5b400', '⚠️ ออฟไลน์ — บันทึกในเครื่องก่อน'],
+    error      : ['#ef5350', '❌ Firebase Error: ' + (msg||'')],
+    saving     : ['#42a5f5', '☁️ กำลังบันทึกขึ้น Firebase...'],
+    saved      : ['#66bb6a', '✅ บันทึกลง Firebase สำเร็จ'],
+  };
+  const [color, label] = MAP[state] || ['#555',''];
+  dot.style.background = color;
+  txt.textContent = label;
+}
+
+function fbPush(){
+  if (!fbRef) { saveLocal(); return; }
+  fbSetStatus('saving');
+  // ตัดรูปออกก่อน push (Base64 ใหญ่เกิน Firebase limit 10MB/node)
+  const safeMembers = members.map(m => {
+    const {photo, ...rest} = m;
+    return {...rest, hasPhoto: !!photo};
+  });
+  fbRef.set({ members: safeMembers, activeId, idCounter })
+    .then(()=> fbSetStatus('saved'))
+    .catch(e => { fbSetStatus('error', e.message); saveLocal(); });
+  // รูปภาพยังคงเก็บใน localStorage เป็น cache
+  saveLocal();
+}
+
+function fbSync(){ fbPush(); }
+
+// ── Local fallback ──
+function saveLocal(){
+  try { localStorage.setItem('mil_html', JSON.stringify({members, activeId, idCounter})); } catch(e){}
+}
+function loadLocal(){
+  try {
+    const s = localStorage.getItem('mil_html');
+    if (s) { const d=JSON.parse(s); members=d.members||[SAMPLE]; activeId=d.activeId||members[0].id; idCounter=d.idCounter||2; }
+    else { members=[SAMPLE]; activeId=1; idCounter=2; }
+  } catch(e) { members=[SAMPLE]; activeId=1; idCounter=2; }
+  updateHeader(); renderForm(); renderMemberCards();
+}
+
+// ══ Init ══
+function init(){
+  // โหลด localStorage ก่อน (เร็ว, มีรูป)
+  loadLocal();
+  // จากนั้นเชื่อม Firebase (sync realtime)
+  fbInit();
+}
+
+// ══ Thai helpers ══
+function TT(v){ if(v===null||v===undefined||v==='') return '-'; return String(v).replace(/[0-9]/g,d=>TD[+d]); }
+function fmtDate(d){
+  if(!d) return '-';
+  if(d.includes('/')){ const [dd,mo,y]=d.split('/'); if(!dd||!mo||!y) return TT(d); return TT(parseInt(dd))+' '+MONTHS_ABB[parseInt(mo)-1]+' '+TT(parseInt(y)); }
+  if(d.includes('-')){ const [y,mo,dd]=d.split('-'); const yr=parseInt(y)<2400?parseInt(y)+543:parseInt(y); return TT(parseInt(dd))+' '+MONTHS_ABB[parseInt(mo)-1]+' '+TT(yr); }
+  return TT(d);
+}
+function chk(v,m){ return v===m?'☑':'☐'; }
+
+// ══ Get active member ══
+function getM(){ return members.find(x=>x.id===activeId)||members[0]; }
+function setField(k,v){ const idx=members.findIndex(x=>x.id===activeId); if(idx>=0){ members[idx][k]=v; updateHeader(); } }
+
+// ══ Header ══
+function updateHeader(){
+  const m=getM(); if(!m) return;
+  const fn=[m.rank,m.firstName,m.lastName].filter(Boolean).join(' ');
+  document.getElementById('header-name').textContent=fn||'ยังไม่มีข้อมูล';
+  document.getElementById('header-unit').textContent=m.unit||'ยังไม่ระบุสังกัด';
+  document.getElementById('hdr-count').textContent=members.length;
+  const hImg=document.getElementById('hdr-img');
+  const hIco=document.getElementById('hdr-icon');
+  if(m.photo){ hImg.src=m.photo; hImg.style.display='block'; hIco.style.display='none'; }
+  else{ hImg.style.display='none'; hIco.style.display='block'; }
+}
+
+// ══ Save ══
+function saveData(){
+  // merge รูปกลับเข้าไปก่อนบันทึก (รูปเก็บเฉพาะ local)
+  const btn=document.getElementById('btn-save');
+  btn.textContent='☁️ กำลังบันทึก...'; btn.classList.add('ok');
+  fbPush();
+  setTimeout(()=>{ btn.textContent='💾 บันทึกข้อมูล'; btn.classList.remove('ok'); },2500);
+}
+
+// ══ Tabs ══
+function switchTab(el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentTab=el.dataset.tab;
+  renderForm();
+}
+
+// ══ Members ══
+function addBlankMember(){
+  const nm=blank(idCounter++);
+  members.push(nm); activeId=nm.id;
+  fbPush();
+  renderMemberCards(); renderForm(); updateHeader(); closeList(); closeMenu();
+}
+function deleteCurrent(){
+  if(members.length<=1){ alert('ต้องมีอย่างน้อย 1 สมาชิก'); return; }
+  if(!confirm('ยืนยันลบสมาชิกนี้?')) return;
+  members=members.filter(x=>x.id!==activeId);
+  activeId=members[0].id;
+  fbPush();
+  renderMemberCards(); renderForm(); updateHeader();
+}
+function selectMember(id){ activeId=id; renderForm(); updateHeader(); renderMemberCards(); closeList(); }
+
+function toggleList(){
+  const lv=document.getElementById('member-list-view');
+  const fv=document.getElementById('form-view');
+  if(lv.style.display==='none'||!lv.style.display){ lv.style.display='flex'; fv.style.display='none'; renderMemberCards(); }
+  else closeList();
+}
+function closeList(){ document.getElementById('member-list-view').style.display='none'; document.getElementById('form-view').style.display='flex'; }
+
+function renderMemberCards(){
+  document.getElementById('ml-count').textContent='ทั้งหมด '+members.length+' สมาชิก';
+  const el=document.getElementById('member-cards'); el.innerHTML='';
+  members.forEach((mem,i)=>{
+    const fn=[mem.rank,mem.firstName,mem.lastName].filter(Boolean).join(' ')||'สมาชิกที่ '+(i+1);
+    const div=document.createElement('div');
+    div.className='mcard'+(mem.id===activeId?' active':'');
+    div.innerHTML=`<div class="mcard-photo">${mem.photo?`<img src="${mem.photo}">`:'👤'}</div>
+      <div style="flex:1;min-width:0"><div class="mcard-name">${fn}</div><div class="mcard-sub">${mem.unit||'ยังไม่ระบุสังกัด'}</div>${mem.idNumber?`<div class="mcard-id">รหัส: ${mem.idNumber}</div>`:''}</div>
+      ${members.length>1?`<button class="btn-del" onclick="event.stopPropagation();delMember(${mem.id})">🗑️</button>`:''}`;
+    div.onclick=()=>selectMember(mem.id);
+    el.appendChild(div);
+  });
+}
+function delMember(id){
+  if(!confirm('ลบสมาชิกนี้?')) return;
+  members=members.filter(x=>x.id!==id);
+  if(activeId===id) activeId=members[0].id;
+  fbPush();
+  renderMemberCards(); updateHeader();
+}
+
+// ══ Menu ══
+function toggleMenu(){ const d=document.getElementById('dropdown'); d.style.display=d.style.display==='none'?'block':'none'; }
+function closeMenu(){ document.getElementById('dropdown').style.display='none'; }
+document.addEventListener('click',e=>{ if(!document.getElementById('menu-btn').contains(e.target)&&!document.getElementById('dropdown').contains(e.target)) closeMenu(); });
+
+// ══ Form helpers ══
+function mkSel(name,opts,val,onChange){
+  const s=document.createElement('select');
+  s.name=name;
+  opts.forEach(o=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; if(o===val) op.selected=true; s.appendChild(op); });
+  s.onchange=()=>onChange(name,s.value);
+  return s;
+}
+function mkInp(name,val,type,placeholder,onChange){
+  const i=document.createElement('input');
+  i.type=type||'text'; i.name=name; i.value=val||''; i.placeholder=placeholder||'';
+  i.oninput=()=>onChange(name,i.value);
+  return i;
+}
+function F(label,name,m,onChange,opts,type,placeholder){
+  const d=document.createElement('div'); d.className='field';
+  const lb=document.createElement('label'); lb.textContent=label; d.appendChild(lb);
+  d.appendChild(opts?mkSel(name,opts,m[name],onChange):mkInp(name,m[name],type,placeholder,onChange));
+  return d;
+}
+function dateField(label,name,m,onChange){
+  const d=document.createElement('div'); d.className='field';
+  const lb=document.createElement('label'); lb.innerHTML=label+' <span class="date-badge">พ.ศ.</span>'; d.appendChild(lb);
+  const row=document.createElement('div'); row.className='date-row';
+  // parse
+  let dv='',mv='',yv='';
+  const v=m[name]||'';
+  if(v.includes('/')){ const[a,b,c]=v.split('/'); dv=a?String(parseInt(a)):''; mv=b?String(parseInt(b)):''; yv=c||''; }
+  else if(v.includes('-')){ const[a,b,c]=v.split('-'); const yr=parseInt(a); yv=String(yr<2400?yr+543:yr); mv=String(parseInt(b)); dv=String(parseInt(c)); }
+  function save(){ onChange(name,`${dv}/${mv}/${yv}`); }
+  // Day
+  const ds=document.createElement('select'); ds.className='field date-d';
+  ['',...Array.from({length:31},(_,i)=>i+1)].forEach(n=>{ const o=document.createElement('option'); o.value=n?String(n):''; o.textContent=n?TT(n):'วัน'; if(String(n)===dv) o.selected=true; ds.appendChild(o); });
+  ds.onchange=()=>{ dv=ds.value; save(); };
+  // Month
+  const ms=document.createElement('select'); ms.className='field date-m';
+  ['',...MONTHS_TH].forEach((mn,i)=>{ const o=document.createElement('option'); o.value=i?String(i):''; o.textContent=mn||'เดือน'; if(String(i)===mv) o.selected=true; ms.appendChild(o); });
+  ms.onchange=()=>{ mv=ms.value; save(); };
+  // Year
+  const yi=document.createElement('input'); yi.type='text'; yi.className='date-y'; yi.value=TT(yv); yi.placeholder='ปี พ.ศ.'; yi.inputMode='numeric'; yi.maxLength=4;
+  yi.oninput=()=>{ yv=yi.value.replace(/[๐-๙]/g,c=>TD.indexOf(c)).replace(/\D/g,''); save(); };
+  row.appendChild(ds); row.appendChild(ms); row.appendChild(yi);
+  d.appendChild(row); return d;
+}
+function rowEl(...children){ const r=document.createElement('div'); r.className='row'; children.forEach(c=>r.appendChild(c)); return r; }
+function sub(txt){ const d=document.createElement('div'); d.className='sub'; d.textContent=txt; return d; }
+function divEl(){ const d=document.createElement('div'); d.className='divider'; return d; }
+function sec(title,icon,...children){
+  const s=document.createElement('div'); s.className='sec';
+  s.innerHTML=`<div class="sec-head"><span style="font-size:18px">${icon}</span><span class="sec-title">${title}</span></div>`;
+  const b=document.createElement('div'); b.className='sec-body';
+  children.forEach(c=>c&&b.appendChild(c));
+  s.appendChild(b); return s;
+}
+
+// Photo uploader
+function photoUploader(m,onChange){
+  const wrap=document.createElement('div'); wrap.className='photo-wrap';
+  const box=document.createElement('div'); box.className='photo-box';
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.style.display='none';
+  function refresh(){ box.innerHTML=''; if(m.photo){ const img=document.createElement('img'); img.src=m.photo; box.appendChild(img); } else { box.innerHTML='<div class="ph"><span>📷</span><span>แตะเพื่อเพิ่มรูป</span></div>'; } box.innerHTML+='<div class="photo-edit">✏️</div>'; }
+  inp.onchange=e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=ev=>{ onChange('photo',ev.target.result); m.photo=ev.target.result; refresh(); updateHeader(); }; r.readAsDataURL(f); };
+  box.onclick=()=>inp.click(); refresh(); wrap.appendChild(box); wrap.appendChild(inp);
+  if(m.photo){ const rm=document.createElement('button'); rm.className='btn-rm-photo'; rm.textContent='🗑️ ลบรูป'; rm.onclick=()=>{ onChange('photo',null); m.photo=null; refresh(); updateHeader(); }; wrap.appendChild(rm); }
+  return wrap;
+}
+
+// ══ Render form ══
+function renderForm(){
+  const m=getM(); if(!m) return;
+  const ch=(k,v)=>{ setField(k,v); };
+  const c=document.getElementById('content'); c.innerHTML='';
+  let s;
+  if(currentTab==='personal'){
+    s=sec('ข้อมูลส่วนตัว','👤',
+      photoUploader(m,ch),
+      rowEl(F('ยศ','rank',m,ch,RANKS),F('ชื่อ','firstName',m,ch)),
+      F('นามสกุล','lastName',m,ch),
+      F('หมายเลขประจำตัว','idNumber',m,ch),
+      F('หมายเลขประจำตัวประชาชน','nationalId',m,ch),
+      dateField('วัน/เดือน/ปี เกิด','birthDate',m,ch),
+      rowEl(F('อายุ (ปี)','age',m,ch,null,'number'),F('ส่วนสูง (ซม.)','height',m,ch,null,'number'),F('น้ำหนัก (กก.)','weight',m,ch,null,'number')),
+      F('กลุ่มเลือด','bloodType',m,ch,BLOODS),
+      F('ตำหนิ/แผลเป็น','scar',m,ch,null,'text','-'),
+      F('สถานที่เกิด (ทะเบียนบ้าน)','birthAddress',m,ch),
+      F('ที่พักอาศัยปัจจุบัน','currentAddress',m,ch),
+      F('เบอร์โทรศัพท์','phone',m,ch,null,'tel'),
+      F('อีเมล','email',m,ch,null,'email','-')
+    );
+  } else if(currentTab==='service'){
+    s=sec('ราชการ','🎖️',
+      F('ตำแหน่ง','position',m,ch),
+      F('สังกัด','unit',m,ch),
+      F('เหล่า','branch',m,ch,BRANCHES),
+      F('ชั้นเงินเดือน','salaryGrade',m,ch),
+      rowEl(F('เงินเดือน (บาท)','salary',m,ch),F('เงินเพิ่มพิเศษ (บาท)','bonusSalary',m,ch,null,'text','-')),
+      dateField('วันบรรจุเข้ารับราชการ','enlistDate',m,ch),
+      divEl(),sub('💡 ความสามารถพิเศษ'),
+      F('ความสามารถ 1','specialSkill1',m,ch,null,'text','-'),
+      F('ความสามารถ 2','specialSkill2',m,ch,null,'text','-')
+    );
+  } else if(currentTab==='education'){
+    s=sec('การศึกษา','📚',
+      F('วุฒิการศึกษา','education',m,ch,EDUS),
+      divEl(),sub('🪖 หลักสูตรทหาร'),
+      F('หลักสูตรที่ 1','militaryCourse1',m,ch,null,'text','ชื่อหลักสูตร รุ่น/ปี'),
+      F('หลักสูตรที่ 2','militaryCourse2',m,ch,null,'text','-'),
+      F('หลักสูตรที่ 3','militaryCourse3',m,ch,null,'text','-')
+    );
+  } else if(currentTab==='family'){
+    s=sec('ครอบครัว','👨‍👩‍👧',
+      F('สถานภาพ','maritalStatus',m,ch,['โสด','สมรส','หย่าร้าง','ภรรยาถึงแก่กรรม']),
+      divEl(),sub('👨 บิดา'),
+      F('ชื่อ-สกุลบิดา','fatherName',m,ch,null,'text','-'),
+      F('อาชีพ','fatherOccupation',m,ch,null,'text','-'),
+      F('ที่อยู่บิดา','fatherAddress',m,ch,null,'text','-'),
+      divEl(),sub('👩 มารดา'),
+      F('ชื่อ-สกุลมารดา','motherName',m,ch,null,'text','-'),
+      F('อาชีพ','motherOccupation',m,ch,null,'text','-'),
+      F('ที่อยู่มารดา','motherAddress',m,ch,null,'text','-'),
+      divEl(),sub('💑 ภรรยา / บุตร'),
+      F('ชื่อ-สกุลภรรยา','wifeName',m,ch,null,'text','-'),
+      F('อาชีพภรรยา','wifeOccupation',m,ch,null,'text','-'),
+      F('ที่อยู่ภรรยา','wifeAddress',m,ch,null,'text','-'),
+      F('จำนวนบุตร/ธิดา (คน)','childrenCount',m,ch,null,'number','0')
+    );
+  } else if(currentTab==='health'){
+    s=sec('สุขภาพ','🏥',
+      F('สุขภาพ','healthStatus',m,ch,['ไม่มีโรคประจำตัว','โรคประจำตัว','อื่น ๆ']),
+      F('ระบุ (ถ้ามี)','healthNote',m,ch,null,'text','-')
+    );
+  } else if(currentTab==='finance'){
+    const fd=F('หนี้สิน','hasDebt',m,ch,['ไม่มี','มี']);
+    const extra=document.createElement('div');
+    function updateDebt(){ extra.innerHTML=''; if(m.hasDebt==='มี'){ extra.appendChild(F('จำนวนหนี้ (บาท)','debtAmount',m,ch,null,'number')); extra.appendChild(F('ผ่อนชำระ (บาท/เดือน)','debtPayment',m,ch,null,'number')); extra.appendChild(F('แหล่งที่มาของหนี้','debtSource',m,ch,['นอกระบบ','กยศ.','สหกรณ์ออมทรัพย์','ผ่อนซื้อ','อื่น ๆ'])); } }
+    fd.querySelector('select').addEventListener('change',e=>{ m.hasDebt=e.target.value; updateDebt(); }); updateDebt();
+    s=sec('สถานภาพทางการเงิน','💰',fd,extra);
+  } else if(currentTab==='commanders'){
+    const kids=[];
+    for(let n=1;n<=4;n++){
+      if(n>1) kids.push(divEl());
+      kids.push(sub(`⭐ ผบ.ชา ลำดับที่ ${n}`));
+      kids.push(F('ยศ/ชื่อ-สกุล',`commander${n}Name`,m,ch));
+      kids.push(F('ตำแหน่ง',`commander${n}Position`,m,ch));
+      kids.push(F('เบอร์โทรศัพท์',`commander${n}Phone`,m,ch,null,'tel'));
+    }
+    s=sec('ผู้บังคับบัญชาตามลำดับชั้น','⭐',...kids);
+  }
+  if(s) c.appendChild(s);
+}
+
+// ══ Import file — parse ในเครื่อง ไม่ต้องใช้ API ══
+function showImport(){ document.getElementById('import-modal').classList.add('show'); showImportIdle(); }
+function closeImport(){ document.getElementById('import-modal').classList.remove('show'); }
+function handleFileDrop(e){ e.preventDefault(); document.getElementById('drop-zone').classList.remove('drag'); const f=e.dataTransfer.files[0]; if(f) processFile(f); }
+function handleFileInput(e){ const f=e.target.files[0]; if(f) processFile(f); e.target.value=''; }
+
+function showImportIdle(){
+  document.getElementById('modal-body').innerHTML=`
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+      ondragover="event.preventDefault();this.classList.add('drag')"
+      ondragleave="this.classList.remove('drag')"
+      ondrop="handleFileDrop(event)">
+      <div style="font-size:40px;margin-bottom:8px">📄</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:6px">แตะหรือลากไฟล์มาวางที่นี่</div>
+      <div style="font-size:12px;color:#7a96b5;line-height:1.7">
+        📝 Word (.docx)<br>📊 Excel (.xlsx, .xls, .csv)<br>📕 PDF (.pdf)<br>📄 Text (.txt)
+      </div>
+    </div>
+    <input type="file" id="file-input" accept=".docx,.xlsx,.xls,.csv,.pdf,.txt" style="display:none" onchange="handleFileInput(event)">
+    <div class="import-note" style="margin-top:12px">
+      ⚡ วิเคราะห์ในเครื่อง ไม่ต้องใช้อินเทอร์เน็ต<br>
+      📋 Excel: ต้องมีหัวตารางตรงกับ field เช่น ชื่อ, นามสกุล, ยศ, ตำแหน่ง ฯลฯ<br>
+      📝 Word/PDF: อ่านข้อความและ match อัตโนมัติ
+    </div>`;
+}
+
+// ── Field keyword map สำหรับ match อัตโนมัติ ──
+const FIELD_MAP = {
+  rank:            ['ยศ','rank','grade'],
+  firstName:       ['ชื่อ','firstname','first name','ชื่อจริง'],
+  lastName:        ['นามสกุล','lastname','last name','surname'],
+  idNumber:        ['หมายเลขประจำตัว','รหัสประจำตัว','idnumber','id number','เลขประจำตัว'],
+  nationalId:      ['บัตรประชาชน','เลขบัตร','nationalid','หมายเลขประจำตัวประชาชน','citizenid'],
+  position:        ['ตำแหน่ง','position','ตำแหน่งงาน'],
+  unit:            ['สังกัด','หน่วย','unit','กรม','กอง'],
+  branch:          ['เหล่า','branch','เหล่าทัพ'],
+  salaryGrade:     ['ชั้นเงินเดือน','salary grade','ชั้น'],
+  salary:          ['อัตราเงินเดือน','เงินเดือน','salary','salaryamount'],
+  bonusSalary:     ['เงินเพิ่มพิเศษ','bonus','โบนัส'],
+  enlistDate:      ['วันบรรจุ','บรรจุ','enlist','วันเริ่มงาน','เริ่มรับราชการ'],
+  birthDate:       ['วันเกิด','เกิด','birthdate','birth date','ว.ด.ป.เกิด'],
+  age:             ['อายุ','age'],
+  height:          ['ส่วนสูง','height','ความสูง'],
+  weight:          ['น้ำหนัก','weight'],
+  bloodType:       ['กลุ่มเลือด','blood','bloodtype','เลือด'],
+  birthAddress:    ['สถานที่เกิด','ภูมิลำเนา','birthaddress','ที่อยู่ตามทะเบียน'],
+  phone:           ['โทรศัพท์','เบอร์','phone','tel','mobile','มือถือ'],
+  email:           ['email','อีเมล','อีเมลล์','e-mail'],
+  currentAddress:  ['ที่อยู่ปัจจุบัน','ที่พักปัจจุบัน','ที่อยู่','address','currentaddress'],
+  scar:            ['ตำหนิ','แผลเป็น','scar','ตำหนิแผลเป็น'],
+  education:       ['การศึกษา','วุฒิ','education','วุฒิการศึกษา'],
+  militaryCourse1: ['หลักสูตร1','หลักสูตรที่1','course1','หลักสูตรทหาร'],
+  militaryCourse2: ['หลักสูตร2','หลักสูตรที่2','course2'],
+  militaryCourse3: ['หลักสูตร3','หลักสูตรที่3','course3'],
+  maritalStatus:   ['สถานภาพ','marital','สมรส','โสด'],
+  fatherName:      ['บิดา','พ่อ','father','fathername','ชื่อบิดา'],
+  fatherOccupation:['อาชีพบิดา','fatheroccupation','อาชีพพ่อ'],
+  fatherAddress:   ['ที่อยู่บิดา','fatheraddress'],
+  motherName:      ['มารดา','แม่','mother','mothername','ชื่อมารดา'],
+  motherOccupation:['อาชีพมารดา','motheroccupation','อาชีพแม่'],
+  motherAddress:   ['ที่อยู่มารดา','motheraddress'],
+  wifeName:        ['ภรรยา','คู่สมรส','wife','spouse'],
+  wifeOccupation:  ['อาชีพภรรยา','wifeoccupation'],
+  wifeAddress:     ['ที่อยู่ภรรยา','wifeaddress'],
+  childrenCount:   ['บุตร','จำนวนบุตร','children','child'],
+  healthStatus:    ['สุขภาพ','health','โรค'],
+  healthNote:      ['โรคประจำตัว','healthnote','อาการ'],
+  specialSkill1:   ['ความสามารถ','ทักษะ','skill','สามารถ'],
+  specialSkill2:   ['ความสามารถ2','skill2'],
+  hasDebt:         ['หนี้','debt','หนี้สิน'],
+  debtAmount:      ['จำนวนหนี้','debtamount'],
+  debtPayment:     ['ผ่อนชำระ','debtpayment'],
+  commander1Name:  ['ผบ.ชา1','commander1','ผู้บังคับบัญชา1'],
+  commander1Position:['ตำแหน่งผบ1','commander1position'],
+  commander1Phone: ['โทรผบ1','commander1phone'],
+  commander2Name:  ['ผบ.ชา2','commander2'],
+  commander2Position:['ตำแหน่งผบ2','commander2position'],
+  commander2Phone: ['โทรผบ2','commander2phone'],
+  commander3Name:  ['ผบ.ชา3','commander3'],
+  commander3Position:['ตำแหน่งผบ3','commander3position'],
+  commander3Phone: ['โทรผบ3','commander3phone'],
+  commander4Name:  ['ผบ.ชา4','commander4'],
+  commander4Position:['ตำแหน่งผบ4','commander4position'],
+  commander4Phone: ['โทรผบ4','commander4phone'],
+};
+
+function matchKey(header){
+  const h = header.trim().toLowerCase().replace(/\s+/g,'');
+  for(const [field, keywords] of Object.entries(FIELD_MAP)){
+    if(keywords.some(k => h.includes(k.toLowerCase().replace(/\s+/g,'')))) return field;
+  }
+  return null;
+}
+
+// ── parse Excel/CSV ──
+function parseExcel(ab){
+  const wb = XLSX.read(ab,{type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+  if(rows.length < 2) throw new Error('ไม่พบข้อมูลในไฟล์ Excel');
+
+  // หา header row (row ที่มีข้อความมากที่สุด)
+  let hdrIdx = 0;
+  let maxMatches = 0;
+  for(let i=0;i<Math.min(5,rows.length);i++){
+    const m = rows[i].filter(c=>matchKey(String(c))).length;
+    if(m > maxMatches){ maxMatches=m; hdrIdx=i; }
+  }
+  const headers = rows[hdrIdx];
+  const dataRow = rows[hdrIdx+1] || [];
+
+  const parsed = {};
+  headers.forEach((h,i)=>{
+    const field = matchKey(String(h));
+    if(field && dataRow[i] !== undefined && dataRow[i] !== '') {
+      parsed[field] = String(dataRow[i]).trim();
+    }
+  });
+  return parsed;
+}
+
+// ── parse plain text (Word/PDF extracted text) ──
+function parseText(text){
+  const parsed = {};
+  const lines = text.split(/\n|\r/).map(l=>l.trim()).filter(Boolean);
+
+  lines.forEach(line=>{
+    // รูปแบบ "key : value" หรือ "key value" หรือ "key\tvalue"
+    const sep = line.match(/^(.+?)[\s]*[:：\t][\s]*(.+)$/);
+    if(!sep) return;
+    const [,k,v] = sep;
+    const field = matchKey(k);
+    if(field && !parsed[field]) parsed[field] = v.trim();
+  });
+
+  // ถ้าไม่ได้อะไรเลย ลอง full-text search
+  if(Object.keys(parsed).length < 3){
+    // ชื่อ-สกุล pattern
+    const nameM = text.match(/(?:ชื่อ\s*[-–]\s*สกุล|ยศ\/ชื่อ)[^\n]*?([ก-๙]+\s+[ก-๙]+(?:\s+[ก-๙]+)?)/);
+    if(nameM){
+      const parts = nameM[1].trim().split(/\s+/);
+      if(parts.length >= 2){ parsed.firstName = parts[0]; parsed.lastName = parts[1]; }
+    }
+    const phoneM = text.match(/(?:โทร|phone|tel)[^\n\d]*(\d[\d\s\-]{8,12}\d)/i);
+    if(phoneM) parsed.phone = phoneM[1].replace(/\D/g,'');
+    const idM = text.match(/(?:หมายเลขประจำตัว)[^\d]*(\d{7,10})/);
+    if(idM) parsed.idNumber = idM[1];
+    const natM = text.match(/(?:ประจำตัวประชาชน|บัตรประชาชน)[^\d]*(\d{13})/);
+    if(natM) parsed.nationalId = natM[1];
+  }
+
+  return parsed;
+}
+
+function fileToB64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=e=>res(e.target.result.split(',')[1]); r.onerror=()=>rej(new Error('อ่านไฟล์ไม่ได้')); r.readAsDataURL(file); }); }
+
+async function processFile(file){
+  const mb = document.getElementById('modal-body');
+  mb.innerHTML=`<div style="text-align:center;padding:32px 0"><div class="spinner"></div><div style="margin-top:16px;font-weight:700">กำลังวิเคราะห์ไฟล์...</div><div style="font-size:12px;color:#7a96b5;margin-top:6px">${file.name}</div></div>`;
+  try{
+    const ext = file.name.split('.').pop().toLowerCase();
+    let parsed = {};
+
+    if(ext==='xlsx'||ext==='xls'||ext==='csv'){
+      const ab = await file.arrayBuffer();
+      parsed = parseExcel(ab);
+    }
+    else if(ext==='pdf'){
+      // PDF: อ่าน text จาก URL.createObjectURL แล้ว parse
+      const text = await extractPdfText(file);
+      parsed = parseText(text);
+    }
+    else if(ext==='docx'){
+      // DOCX: ใช้ mammoth ถ้าโหลดได้ หรือ fallback text
+      try {
+        const ab = await file.arrayBuffer();
+        const result = await new Promise((res,rej)=>{
+          if(typeof mammoth !== 'undefined'){
+            mammoth.extractRawText({arrayBuffer:ab}).then(r=>res(r.value)).catch(rej);
+          } else { rej(new Error('no mammoth')); }
+        });
+        parsed = parseText(result);
+      } catch {
+        const text = await file.text().catch(()=>'');
+        parsed = parseText(text);
+      }
+    }
+    else {
+      const text = await file.text();
+      parsed = parseText(text);
+    }
+
+    showPreview(parsed, file.name);
+  } catch(e){
+    mb.innerHTML=`<div style="text-align:center;padding:32px 0">
+      <div style="font-size:40px;margin-bottom:12px">⚠️</div>
+      <div style="color:#ef5350;font-weight:700;margin-bottom:8px">เกิดข้อผิดพลาด</div>
+      <div style="font-size:12px;color:#7a96b5;margin-bottom:16px">${e.message||'ไม่สามารถอ่านไฟล์ได้'}</div>
+      <button class="btn btn-add" onclick="showImportIdle()">🔄 ลองใหม่</button></div>`;
+  }
+}
+
+// ── Extract PDF text using PDF.js CDN ──
+async function extractPdfText(file){
+  if(typeof pdfjsLib === 'undefined'){
+    // โหลด PDF.js แบบ dynamic
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload=()=>{ pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; res(); };
+      s.onerror=rej;
+      document.head.appendChild(s);
+    });
+  }
+  const ab = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:ab}).promise;
+  let text = '';
+  for(let i=1;i<=Math.min(pdf.numPages,5);i++){
+    const pg = await pdf.getPage(i);
+    const tc = await pg.getTextContent();
+    text += tc.items.map(item=>item.str).join(' ') + '\n';
+  }
+  return text;
+}
+
+// ── mammoth สำหรับ DOCX (โหลด dynamic) ──
+async function ensureMammoth(){
+  if(typeof mammoth !== 'undefined') return;
+  await new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
+    s.onload=res; s.onerror=rej;
+    document.head.appendChild(s);
+  });
+}
+
+function showPreview(parsed,fname){
+  const nm=[parsed.rank,parsed.firstName,parsed.lastName].filter(Boolean).join(' ')||'ไม่พบชื่อ';
+  document.getElementById('modal-body').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;background:rgba(102,187,106,.1);border-radius:8px;border:1px solid rgba(102,187,106,.3)"><span>✅</span><span style="font-size:13px;font-weight:700;color:#66bb6a">พบข้อมูลสมาชิก</span></div>
+    <div class="preview-card">
+      ${[['ยศ/ชื่อ-สกุล',nm],['หมายเลขประจำตัว',parsed.idNumber||'-'],['ตำแหน่ง',parsed.position||'-'],['สังกัด',parsed.unit||'-'],['วันเกิด',parsed.birthDate||'-'],['เบอร์โทร',parsed.phone||'-']].map(([k,v])=>`<div class="preview-row"><span class="preview-label">${k}</span><span class="preview-val">${v}</span></div>`).join('')}
+    </div>
+    <div style="font-size:11px;color:#7a96b5;text-align:center;margin-bottom:14px">สามารถแก้ไขข้อมูลได้หลังจากเพิ่มสมาชิก</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn-cancel" onclick="showImportIdle()">← ย้อนกลับ</button>
+      <button class="btn-confirm" onclick="confirmImport(${JSON.stringify(JSON.stringify(parsed)).slice(1,-1)})">✅ เพิ่มสมาชิกนี้</button>
+    </div>`;
+  // store parsed temporarily
+  window._importParsed=parsed;
+  // replace confirm button properly
+  document.querySelector('.btn-confirm').onclick=()=>{ confirmImportParsed(window._importParsed); };
+}
+function confirmImportParsed(parsed){
+  const nm={...blank(idCounter++),...parsed,id:idCounter-1};
+  members.push(nm); activeId=nm.id;
+  fbPush();
+  renderMemberCards(); renderForm(); updateHeader(); closeImport();
+}
+
+// ══ PRINT ══
+function doPrint(){
+  const m=getM(); if(!m) return;
+  const fn=[m.rank,m.firstName,m.lastName].filter(Boolean).join(' ');
+  const pa=document.getElementById('print-area');
+  pa.innerHTML=buildPrintHTML(m,fn);
+  window.print();
+}
+
+function buildPrintHTML(m,fn){
+  const thaiNums=['๑','๒','๓','๔','๕','๖','๗'];
+  const rankMap={'ส.ต.':'rt-st','ส.ท.':'rt-sth','ส.อ.':'rt-so','จ.ส.ต.':'rt-jst','จ.ส.ท.':'rt-jsth','จ.ส.อ.':'rt-jso','จ.ส.อ.(พ)':'rt-jsop'};
+  const rank2col={'ส.ต.':0,'ส.ท.':1,'ส.อ.':2,'จ.ส.ต.':3,'จ.ส.ท.':4,'จ.ส.อ.':5,'จ.ส.อ.(พ)':6};
+  const rankCols=['ส.ต.','ส.ท.','ส.อ.','จ.ส.ต.','จ.ส.ท.','จ.ส.อ.','จ.ส.อ.(พ)'];
+  const ms=m.maritalStatus;
+  const hs=m.healthStatus;
+  const photoHtml=m.photo?`<img src="${m.photo}" style="width:79px;height:100px;object-fit:cover;display:block">`:`<div class="noph"><span style="font-size:22pt">👤</span><span>รูปถ่าย</span></div>`;
+  const p2PhotoHtml=m.photo?`<img src="${m.photo}" style="width:80px;height:103px;object-fit:cover">`:`<span style="font-size:9pt;color:#999">รูปถ่าย</span>`;
+
+  return `
+<div class="pf">
+<!-- PAGE 1 -->
+<div class="print-page" style="min-height:277mm;padding:0 0 8mm 0">
+  <div class="pt">ประวัติบุคคลสังเขป</div>
+  <table>
+    <tr>
+      <td class="lb" style="width:16%">๑. ข้อมูลส่วนตัว</td>
+      <td colspan="3">ยศ/ชื่อ – สกุล &nbsp;<b>${TT(fn)}</b></td>
+      <td class="ph-cell" rowspan="6">${photoHtml}</td>
+    </tr>
+    <tr>
+      <td class="lb">หมายเลขประจำตัว</td>
+      <td class="vl" colspan="2">${TT(m.idNumber)}</td>
+      <td>หมายเลขประจำตัวประชาชน &nbsp;<b>${TT(m.nationalId)}</b></td>
+    </tr>
+    <tr>
+      <td class="lb">ตำแหน่ง</td>
+      <td class="vl">${TT(m.position)}</td>
+      <td class="lb">สังกัด</td>
+      <td class="vl">${TT(m.unit)} &nbsp; เหล่า <b>${TT(m.branch)}</b></td>
+    </tr>
+    <tr>
+      <td class="lb">ชั้นเงินเดือน</td>
+      <td class="vl">${TT(m.salaryGrade)}</td>
+      <td class="lb">อัตราเงินเดือน</td>
+      <td class="vl">${TT(m.salary)} บาท &nbsp; เงินเพิ่มพิเศษ ${TT(m.bonusSalary)} บาท &nbsp; บรรจุ ${fmtDate(m.enlistDate)}</td>
+    </tr>
+    <tr>
+      <td class="lb">วัน/เดือน/ปีเกิด</td>
+      <td class="vl" colspan="3">${fmtDate(m.birthDate)} &nbsp; อายุ <b>${TT(m.age)}</b> ปี &nbsp; ส่วนสูง <b>${TT(m.height)}</b> ซม. &nbsp; น้ำหนัก <b>${TT(m.weight)}</b> กก. &nbsp; กลุ่มเลือด <b>${TT(m.bloodType)}</b></td>
+    </tr>
+    <tr>
+      <td class="lb">สถานที่เกิด</td>
+      <td class="vl" colspan="3">${TT(m.birthAddress)} &nbsp; เบอร์โทรศัพท์ <b>${TT(m.phone)}</b></td>
+    </tr>
+  </table>
+  <table>
+    <tr><td class="lb" style="width:16%">๒. การศึกษา</td><td class="vl" colspan="3">${TT(m.education)}</td></tr>
+    <tr><td class="lb">หลักสูตรทหาร รุ่น/ปี</td><td class="vl">๑. ${TT(m.militaryCourse1)}</td><td class="vl">๒. ${TT(m.militaryCourse2)}</td><td class="vl">๓. ${TT(m.militaryCourse3)}</td></tr>
+  </table>
+  <table>
+    <tr>
+      <td class="lb" style="width:16%">๓. ครอบครัว</td>
+      <td colspan="5">${chk(ms,'บิดาถึงแก่กรรม')} บิดาถึงแก่กรรม &nbsp;${chk(ms,'มารดาถึงแก่กรรม')} มารดาถึงแก่กรรม &nbsp;${chk(ms,'โสด')} โสด &nbsp;${chk(ms,'สมรส')} สมรส &nbsp;${chk(ms,'หย่าร้าง')} หย่าร้าง &nbsp;${chk(ms,'ภรรยาถึงแก่กรรม')} ภรรยาถึงแก่กรรม</td>
+    </tr>
+    <tr><td class="lb">- บิดาชื่อ</td><td class="vl" colspan="2">${TT(m.fatherName)}</td><td class="lb">อาชีพ</td><td class="vl" colspan="2">${TT(m.fatherOccupation)}</td></tr>
+    <tr><td class="lb">ที่อยู่</td><td class="vl" colspan="5">${TT(m.fatherAddress)}</td></tr>
+    <tr><td class="lb">- มารดาชื่อ</td><td class="vl" colspan="2">${TT(m.motherName)}</td><td class="lb">อาชีพ</td><td class="vl" colspan="2">${TT(m.motherOccupation)}</td></tr>
+    <tr><td class="lb">ที่อยู่</td><td class="vl" colspan="5">${TT(m.motherAddress)}</td></tr>
+    <tr><td class="lb">- ภรรยาชื่อ</td><td class="vl" colspan="2">${TT(m.wifeName)}</td><td class="lb">อาชีพ</td><td class="vl" colspan="2">${TT(m.wifeOccupation)}</td></tr>
+    <tr><td class="lb">- บุตร/ธิดา จำนวน</td><td class="vl" colspan="5">${TT(m.childrenCount||'0')} คน</td></tr>
+  </table>
+  <table>
+    <tr><td class="lb" style="width:22%">๔. สถานที่พักอาศัยปัจจุบัน</td><td class="vl">${TT(m.currentAddress)}</td></tr>
+    <tr><td class="lb">๕. สุขภาพ</td><td>${chk(hs,'โรคประจำตัว')} โรคประจำตัว &nbsp;${chk(hs,'ไม่มีโรคประจำตัว')} ไม่มีโรคประจำตัว &nbsp;□ อื่น ๆ ระบุ ${TT(m.healthNote)}</td></tr>
+    <tr><td class="lb">๖. ความสามารถพิเศษ</td><td class="vl">๑. ${TT(m.specialSkill1)} &nbsp;&nbsp; ๒. ${TT(m.specialSkill2)}</td></tr>
+    <tr><td class="lb">๗. ความประพฤติและการทำงาน</td><td style="height:18px"></td></tr>
+  </table>
+  <table>
+    <tr><td class="lb" style="width:22%">๘. ประวัติรับราชการ</td><td colspan="3"></td></tr>
+    <tr><td class="lb" style="padding-left:10px">๘.๑ เดิมดำรงตำแหน่ง</td><td>๑.</td><td>๒.</td><td>๓.</td></tr>
+    <tr><td class="lb" style="padding-left:10px">๘.๒ ราชการสนาม</td><td>๑.</td><td>๒.</td><td></td></tr>
+    <tr><td class="lb" style="padding-left:10px">๘.๓ ราชการพิเศษ</td><td>๑.</td><td>๒.</td><td></td></tr>
+    <tr><td class="lb" style="padding-left:10px">๘.๔ แต่งตั้งเป็น รอว.เมื่อ</td><td>ครั้งที่ ๑. &nbsp;&nbsp;&nbsp;&nbsp; ครั้งที่ ๒.</td><td>ครั้งที่ ๓. &nbsp;&nbsp;&nbsp;&nbsp; ครั้งที่ ๔.</td><td>ครั้งที่ ๕. &nbsp;&nbsp;&nbsp;&nbsp; ครั้งที่ ๖.</td></tr>
+  </table>
+  <table>
+    <tr><td class="lb" style="width:22%">๙. การขอรับพระมหากรุณาธิคุณ</td><td>ครั้งที่ ๑ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ครั้งที่ ๒</td></tr>
+    <tr><td class="lb">๑๐. ประวัติการกระทำความผิด/โบว์ดำหน่วย</td><td>๑. &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ๒.</td></tr>
+  </table>
+  <table style="margin-bottom:6px">
+    <thead><tr><th style="width:14%">ยศ</th><th>ส.ต.</th><th>ส.ท.</th><th>ส.อ.</th><th>จ.ส.ต.</th><th>จ.ส.ท.</th><th>จ.ส.อ.</th><th>จ.ส.อ.(พ)</th></tr></thead>
+    <tbody><tr><td class="lb ct">วัน/เดือน/ปี</td>${rankCols.map(r=>`<td class="ct">${m.rank===r?fmtDate(m.enlistDate):''}</td>`).join('')}</tr></tbody>
+  </table>
+  <table>
+    <tr>
+      <td style="width:45%;text-align:center;height:70px;vertical-align:bottom">
+        เครื่องราชอิสริยาภรณ์<div class="sig-line"></div>
+      </td>
+      <td style="text-align:center;vertical-align:bottom">
+        (ลงชื่อ) _______________________________ ผู้บันทึก<br>
+        ( ${TT(fn)} )<br>
+        ตำแหน่ง ${TT(m.position)}<br>
+        &nbsp;&nbsp; / &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; / &nbsp;&nbsp;
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- PAGE 2 -->
+<div class="print-page" style="padding-top:4mm">
+  <div class="pt2">ประวัติบุคคลสังเขป</div>
+  <div class="p2wrap">
+    <div class="p2l">
+      <div class="sec-h">สถานภาพเดิม</div>
+      <table style="font-size:10pt">
+        <tr><td class="lb" style="width:45%">สังกัด</td><td class="vl">${TT(m.unit)}</td></tr>
+        <tr><td class="lb">ตำแหน่ง</td><td class="vl">${TT(m.position)}</td></tr>
+        <tr><td class="lb">ชั้นเงินเดือน</td><td class="vl">${TT(m.salaryGrade)}</td></tr>
+        <tr><td class="lb">อัตราเงินเดือน</td><td class="vl">${TT(m.salary)} บาท</td></tr>
+        <tr><td class="lb">เงินเพิ่มพิเศษ</td><td class="vl">${TT(m.bonusSalary)||'-'} บาท</td></tr>
+        <tr><td class="lb">พสร.</td><td></td></tr>
+        <tr><td class="lb">พขว.</td><td></td></tr>
+        <tr><td class="lb">อื่นๆ</td><td></td></tr>
+      </table>
+      <div class="sec-h" style="margin-top:6px">ประวัติส่วนตัว</div>
+      <table style="font-size:10pt">
+        ${[['ยศ/ชื่อ-สกุล',TT(fn)],['หมายเลขประจำตัว',TT(m.idNumber)],['หมายเลขบัตรประชาชน',TT(m.nationalId)],['กำเนิด',''],['บรรจุเข้ารับราชการ',fmtDate(m.enlistDate)+' รวมเวลาราชการ ___ เดือน'],['ปฏิบัติหน้าที่ใน',''],['ว.ด.ป.เกิด',fmtDate(m.birthDate)+' อายุ '+TT(m.age)+' ปี'],['ส่วนสูง',TT(m.height)+' ซม.'],['น้ำหนัก',TT(m.weight)+' กก.'],['กลุ่มเลือด',TT(m.bloodType)],['ตำหนิแผลเป็น',TT(m.scar)],['สถานที่เกิด',TT(m.birthAddress)],['เบอร์โทรศัพท์',TT(m.phone)],['อีเมลล์',TT(m.email)]].map(([k,v])=>`<tr><td class="lb" style="width:42%">${k}</td><td class="vl">${v}</td></tr>`).join('')}
+      </table>
+    </div>
+    <div class="p2c">
+      <div style="font-size:11pt;font-weight:bold;text-align:center;margin-bottom:4px">ประวัติบุคคลสังเขป</div>
+      <div class="p2ph">${p2PhotoHtml}</div>
+      <div style="font-size:9pt;text-align:center">ป้ายสัญลักษณ์ประจำรุ่น</div>
+    </div>
+    <div class="p2r">
+      <div class="sec-h">สถานภาพปัจจุบัน</div>
+      <table style="font-size:10pt;margin-bottom:5px">
+        <tr><td class="lb" style="width:45%">สังกัด</td><td class="vl">${TT(m.unit)}</td></tr>
+        <tr><td class="lb">ตำแหน่ง</td><td class="vl">${TT(m.position)}</td></tr>
+        <tr><td class="lb">ชั้นเงินเดือน</td><td class="vl">${TT(m.salaryGrade)}</td></tr>
+        <tr><td class="lb">อัตราเงินเดือน</td><td class="vl">${TT(m.salary)} บาท</td></tr>
+        <tr><td class="lb">เงินเพิ่มพิเศษ</td><td class="vl">${TT(m.bonusSalary)||'-'} บาท</td></tr>
+        <tr><td class="lb">พพ.</td><td></td></tr><tr><td class="lb">พสร.</td><td></td></tr><tr><td class="lb">พคว.</td><td></td></tr>
+        <tr><td class="lb">แต่งตั้ง รอว. เมื่อ</td><td style="font-size:9pt">ครั้งที่ ๑______ครั้งที่ ๔______<br>ครั้งที่ ๒______ครั้งที่ ๕______<br>ครั้งที่ ๓______ครั้งที่ ๖______</td></tr>
+      </table>
+      <div style="font-weight:bold;font-size:11pt;margin-bottom:3px">สถานภาพ</div>
+      <div style="font-size:10pt;margin-bottom:4px">${chk(ms,'บิดาถึงแก่กรรม')} บิดาถึงแก่กรรม &nbsp;${chk(ms,'มารดาถึงแก่กรรม')} มารดาถึงแก่กรรม &nbsp;${chk(ms,'โสด')} โสด &nbsp;${chk(ms,'สมรส')} สมรส &nbsp;${chk(ms,'หย่าร้าง')} หย่าร้าง</div>
+      <table style="font-size:10pt;margin-bottom:5px">
+        ${[['- บิดาชื่อ',TT(m.fatherName)],['อาชีพ',TT(m.fatherOccupation)],['ที่อยู่',TT(m.fatherAddress)],['- มารดาชื่อ',TT(m.motherName)],['อาชีพ',TT(m.motherOccupation)],['ที่อยู่',TT(m.motherAddress)],['- ภรรยาชื่อ',TT(m.wifeName)],['อาชีพ',TT(m.wifeOccupation)],['ที่อยู่',TT(m.wifeAddress)],['- บุตร/ธิดา จำนวน',TT(m.childrenCount||'0')+' คน'],['สถานที่พักปัจจุบัน',TT(m.currentAddress)]].map(([k,v])=>`<tr><td class="lb" style="width:40%">${k}</td><td class="vl">${v}</td></tr>`).join('')}
+      </table>
+      <div style="font-weight:bold;font-size:11pt;margin-bottom:3px">ข้อมูลอื่นๆ</div>
+      <table style="font-size:10pt">
+        <tr><td class="lb" style="width:40%">๑. สถานภาพทางการเงิน - หนี้สิน</td><td>${chk(m.hasDebt,'ไม่มี')} ไม่มี &nbsp;${chk(m.hasDebt,'มี')} มี${m.hasDebt==='มี'?' จำนวน '+TT(m.debtAmount)+' บาท ผ่อน '+TT(m.debtPayment)+' บาท/เดือน':''}</td></tr>
+        <tr><td class="lb">๒. สุขภาพ</td><td>${chk(hs,'ไม่มีโรคประจำตัว')} ไม่มีโรคประจำตัว &nbsp;${chk(hs,'โรคประจำตัว')} โรคประจำตัว${m.healthNote?' ('+TT(m.healthNote)+')':''}</td></tr>
+        <tr><td class="lb">๓. ความสามารถพิเศษ</td><td class="vl">${TT(m.specialSkill1)}${m.specialSkill2?' / '+TT(m.specialSkill2):''}</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="sec-h" style="margin-bottom:4px">ผบ.ชา ตามลำดับชั้น</div>
+  <table style="font-size:10pt">
+    <thead><tr><th style="width:6%">ลำดับ</th><th style="width:32%">ยศ/ชื่อ – สกุล</th><th style="width:36%">ตำแหน่ง</th><th>เบอร์โทรศัพท์</th></tr></thead>
+    <tbody>
+      ${[1,2,3,4].map(n=>`<tr><td class="ct">${['๑','๒','๓','๔'][n-1]}</td><td class="vl">${TT(m['commander'+n+'Name'])}</td><td class="vl">${TT(m['commander'+n+'Position'])}</td><td class="vl">${TT(m['commander'+n+'Phone'])}</td></tr>`).join('')}
+    </tbody>
+  </table>
+</div>
+</div>`;
+}
+
+// ══ Start ══
+init();
+updateHeader();
+renderForm();
+</script>
+</body>
+</html>
